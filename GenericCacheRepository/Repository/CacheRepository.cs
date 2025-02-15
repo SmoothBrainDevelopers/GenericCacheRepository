@@ -2,22 +2,18 @@
 using GenericCacheRepository.Interfaces;
 using GenericCacheRepository.Services;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace GenericCacheRepository.Repository
 {
     public class CacheRepository : ICacheRepository
     {
         private readonly ICacheService _cacheService;
+        private readonly ICompositeCacheService _compositeCacheService;
         private readonly DbContext _dbContext;
 
-        public CacheRepository(ICacheService cacheService, DbContext dbContext)
+        public CacheRepository(ICacheService cacheService, ICompositeCacheService compositeCacheService, DbContext dbContext)
         {
             _cacheService = cacheService;
+            _compositeCacheService = compositeCacheService;
             _dbContext = dbContext;
         }
 
@@ -40,29 +36,38 @@ namespace GenericCacheRepository.Repository
 
         public async Task<List<T>> FetchAsync<T>(int page, int pageCount, Query<T> query) where T : class
         {
+            string compositeKey = query.GetCacheKey();
+            var cachedIds = await _compositeCacheService.GetCachedIdsAsync(compositeKey);
+
+            if (cachedIds != null && cachedIds.Count > 0)
+            {
+                var results = new List<T>();
+                foreach (var id in cachedIds)
+                {
+                    var entity = await FetchAsync<T>(id);
+                    if (entity != null) results.Add(entity);
+                }
+                return results;
+            }
+
             var dbSet = _dbContext.Set<T>().AsQueryable();
             var filteredQuery = query.Apply(dbSet);
             var result = await filteredQuery.Skip((page - 1) * pageCount).Take(pageCount).ToListAsync();
+
+            var ids = result.Select(x => (object)x.GetType().GetProperty("Id")?.GetValue(x)).Where(id => id != null).ToList();
+            await _compositeCacheService.SetCachedIdsAsync(compositeKey, ids, TimeSpan.FromMinutes(10));
+
             return result;
         }
 
-        public async Task SaveAsync<T>(T entity) where T : class
+        public Task SaveAsync<T>(T entity) where T : class
         {
-            var dbSet = _dbContext.Set<T>();
-            dbSet.Update(entity);
-            await _dbContext.SaveChangesAsync();
+            throw new NotImplementedException();
         }
 
-        public async Task DeleteAsync<T>(params object[] keys) where T : class
+        public Task DeleteAsync<T>(params object[] keys) where T : class
         {
-            var entity = await FetchAsync<T>(keys);
-            if (entity != null)
-            {
-                var dbSet = _dbContext.Set<T>();
-                dbSet.Remove(entity);
-                await _dbContext.SaveChangesAsync();
-            }
+            throw new NotImplementedException();
         }
     }
-
 }

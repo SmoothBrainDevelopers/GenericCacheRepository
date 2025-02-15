@@ -7,33 +7,14 @@ using GenericCacheRepository.Helpers;
 using Microsoft.Extensions.Caching.Memory;
 using GenericCacheRepository.Interfaces;
 using SqliteDbContext.Context;
+using GenericCacheRepository.Test.MS.Domain;
+using GenericCacheRepository.Test.MS.Context;
 
-namespace GenericCacheRepository.Test.MS
+namespace GenericCacheRepository.Test.MS.Tests
 {
     [TestClass]
-    public class CacheRepositoryTests
+    public class CacheRepositoryTests_v1 : TestBase
     {
-        private SqliteDbContext<TestDbContext> _dbContextMock;
-        private Mock<ICacheService> _cacheServiceMock;
-        private CacheRepository _repository;
-
-        [TestInitialize]
-        public void Setup()
-        {
-            _dbContextMock = new SqliteDbContext<TestDbContext>();
-            _cacheServiceMock = new Mock<ICacheService>();
-            _repository = new CacheRepository(_cacheServiceMock.Object, _dbContextMock.Context);
-            RegisterTypes();
-        }
-
-        private void RegisterTypes()
-        {
-            SqliteDbContext<TestDbContext>.RegisterKeyAssignment<User>((user, seeder) =>
-            {
-                user.Id = (int) seeder.IncrementKeys<User>().First();
-            });
-        }
-
         [TestMethod]
         public async Task FetchAsync_ReturnsCachedItem_WhenAvailable()
         {
