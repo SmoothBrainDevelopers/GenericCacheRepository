@@ -3,6 +3,7 @@ using GenericCacheRepository.Interfaces;
 using GenericCacheRepository.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+
 namespace GenericCacheRepository.Repository
 {
     public class CacheRepository : ICacheRepository
@@ -27,45 +28,19 @@ namespace GenericCacheRepository.Repository
             return scope.ServiceProvider.GetRequiredService<DbContext>();
         }
 
-        public async Task<T?> FetchAsync<T>(params object[] keys) where T : class
-        {
-            string cacheKey = $"{typeof(T).Name}:{string.Join(":", keys)}";
-            var cachedItem = await _cacheService.GetAsync<T>(cacheKey);
-
-            if (cachedItem != null)
-            {
-                _logger.LogInfo($"Cache Hit: {cacheKey}");
-                return cachedItem;
-            }
-
-            _logger.LogInfo($"Cache Miss: {cacheKey}");
-            var dbSet = _dbContext.Set<T>();
-            var entity = await dbSet.FindAsync(keys);
-
-            if (entity != null)
-                await _cacheService.SetAsync(cacheKey, entity, TimeSpan.FromMinutes(10));
-
-            return entity;
-        }
-
-
         public async Task<List<T>> FetchAsync<T>(int page, int pageCount, Query<T> query) where T : class
         {
             string compositeKey = query.GetCacheKey();
             var cachedIds = await _compositeCacheService.GetCachedIdsAsync(compositeKey);
 
-            if (cachedIds != null && cachedIds.Count > 0)
+            if (cachedIds.Count > 0)
             {
-                var results = new List<T>();
-                foreach (var id in cachedIds)
-                {
-                    var entity = await FetchAsync<T>(id);
-                    if (entity != null) results.Add(entity);
-                }
+                var results = await FetchAsync<T>(cachedIds);
                 return results;
             }
 
-            var dbSet = _dbContext.Set<T>().AsQueryable();
+            using var dbContext = CreateDbContext();
+            var dbSet = dbContext.Set<T>().AsQueryable();
             var filteredQuery = query.Apply(dbSet);
             var result = await filteredQuery.Skip((page - 1) * pageCount).Take(pageCount).ToListAsync();
 
@@ -108,16 +83,6 @@ namespace GenericCacheRepository.Repository
             return cachedItems;
         }
 
-        public Task SaveAsync<T>(T entity) where T : class
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task DeleteAsync<T>(params object[] keys) where T : class
-        {
-            throw new NotImplementedException();
-        }
-
         public async Task RefreshCompositeCacheAsync<T>(string compositeKey, List<object> ids)
         {
             var accessCount = (await _cacheService.GetAsync<int>(compositeKey + "_accessCount")) + 1;
@@ -127,9 +92,39 @@ namespace GenericCacheRepository.Repository
 
         public async Task<List<T>> FetchMultipleAsync<T>(List<object> keys) where T : class
         {
-            var tasks = keys.Select(async key => await FetchAsync<T>(key)).ToList();
-            return (await Task.WhenAll(tasks)).Where(result => result != null).ToList();
+            var fetchTasks = keys.Select(key => FetchAsync<T>(key)).ToList();
+            var results = await Task.WhenAll(fetchTasks);
+            return results.Where(r => r != null).ToList();
         }
 
+        public Task DeleteAsync<T>(params object[] keys) where T : class
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task DeleteAsync<T>(object key) where T : class
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task DeleteBulkAsync<T>(List<object> keys) where T : class
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<T?> FetchAsync<T>(object key) where T : class
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task SaveAsync<T>(T entity) where T : class
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task SaveBulkAsync<T>(List<T> entities) where T : class
+        {
+            throw new NotImplementedException();
+        }
     }
 }
