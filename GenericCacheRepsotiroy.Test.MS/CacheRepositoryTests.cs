@@ -3,35 +3,46 @@ using Microsoft.EntityFrameworkCore;
 using Moq;
 using GenericCacheRepository.Repository;
 using GenericCacheRepository.Services;
-using GenericCacheRepsotiroy.Test.MS;
 using GenericCacheRepository.Helpers;
 using Microsoft.Extensions.Caching.Memory;
 using GenericCacheRepository.Interfaces;
+using SqliteDbContext.Context;
 
-namespace GenericCacheRepsotiroy.MSTest
+namespace GenericCacheRepository.Test.MS
 {
     [TestClass]
     public class CacheRepositoryTests
     {
-        private Mock<DbContext> _dbContextMock;
+        private SqliteDbContext<TestDbContext> _dbContextMock;
         private Mock<ICacheService> _cacheServiceMock;
         private CacheRepository _repository;
 
         [TestInitialize]
         public void Setup()
         {
-            _dbContextMock = new Mock<DbContext>();
+            _dbContextMock = new SqliteDbContext<TestDbContext>();
             _cacheServiceMock = new Mock<ICacheService>();
-            _repository = new CacheRepository(_cacheServiceMock.Object, _dbContextMock.Object);
+            _repository = new CacheRepository(_cacheServiceMock.Object, _dbContextMock.Context);
+            RegisterTypes();
+        }
+
+        private void RegisterTypes()
+        {
+            SqliteDbContext<TestDbContext>.RegisterKeyAssignment<User>((user, seeder) =>
+            {
+                user.Id = (int) seeder.IncrementKeys<User>().First();
+            });
         }
 
         [TestMethod]
         public async Task FetchAsync_ReturnsCachedItem_WhenAvailable()
         {
-            var user = new User { Id = 1, Name = "Alice" };
-            _cacheServiceMock.Setup(c => c.GetAsync<User>("User:1")).ReturnsAsync(user);
+            var alice = _dbContextMock.GenerateEntity<User>();
+            alice.Name = "Alice";
 
-            var result = await _repository.FetchAsync<User>(1);
+            _cacheServiceMock.Setup(c => c.GetAsync<User>($"User:{alice.Id}")).ReturnsAsync(alice);
+
+            var result = await _repository.FetchAsync<User>(alice.Id);
 
             Assert.IsNotNull(result);
             Assert.AreEqual("Alice", result.Name);
@@ -40,12 +51,9 @@ namespace GenericCacheRepsotiroy.MSTest
         [TestMethod]
         public async Task FetchAsync_FetchesFromDb_WhenNotInCache()
         {
-            var user = new User { Id = 2, Name = "Bob" };
-            var dbSetMock = new Mock<DbSet<User>>();
-            dbSetMock.Setup(d => d.FindAsync(2)).ReturnsAsync(user);
-            _dbContextMock.Setup(d => d.Set<User>()).Returns(dbSetMock.Object);
-
-            var result = await _repository.FetchAsync<User>(2);
+            var bob = _dbContextMock.GenerateEntity<User>();
+            bob.Name = "Bob";
+            var result = await _repository.FetchAsync<User>(bob.Id);
 
             Assert.IsNotNull(result);
             Assert.AreEqual("Bob", result.Name);
@@ -54,19 +62,13 @@ namespace GenericCacheRepsotiroy.MSTest
         [TestMethod]
         public async Task FetchAsync_UsesPaginationCorrectly()
         {
-            var users = new List<User>
-            {
-                    new User { Id = 1, Name = "Alice" },
-                new User { Id = 2, Name = "Bob" }
-            }.AsQueryable();
+            var users = _dbContextMock.GenerateEntities<User>(2)
+                .AsQueryable(); ;
+            User alice = users.ElementAt(0);
+            alice.Name = "Alice";
 
-            var dbSetMock = new Mock<DbSet<User>>();
-            dbSetMock.As<IQueryable<User>>().Setup(m => m.Provider).Returns(users.Provider);
-            dbSetMock.As<IQueryable<User>>().Setup(m => m.Expression).Returns(users.Expression);
-            dbSetMock.As<IQueryable<User>>().Setup(m => m.ElementType).Returns(users.ElementType);
-            dbSetMock.As<IQueryable<User>>().Setup(m => m.GetEnumerator()).Returns(users.GetEnumerator());
-
-            _dbContextMock.Setup(d => d.Set<User>()).Returns(dbSetMock.Object);
+            User bob = users.ElementAt(1);
+            bob.Name = "Bob";
 
             var query = new Query<User>(u => u.Id > 0);
             var result = await _repository.FetchAsync(1, 10, query);

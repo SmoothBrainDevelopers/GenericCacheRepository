@@ -5,7 +5,7 @@ VisualStudioVersion = 17.13.35806.99
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GenericCacheRepository", "GenericCacheRepository\GenericCacheRepository.csproj", "{C1479CBD-4F0C-49A5-82B8-2CFE516BF9E8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GenericCacheRepsotiroy.Test.MS", "GenericCacheRepsotiroy.Test.MS\GenericCacheRepsotiroy.Test.MS.csproj", "{091093D1-4647-6264-D13A-EB16E3291A76}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GenericCacheRepository.Test.MS", "GenericCacheRepsotiroy.Test.MS\GenericCacheRepository.Test.MS.csproj", "{091093D1-4647-6264-D13A-EB16E3291A76}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
