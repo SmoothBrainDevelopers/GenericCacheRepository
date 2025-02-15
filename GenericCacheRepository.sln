@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35806.99
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GenericCacheRepository", "GenericCacheRepository\GenericCacheRepository.csproj", "{C1479CBD-4F0C-49A5-82B8-2CFE516BF9E8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GenericCacheRepsotiroy.Test.MS", "GenericCacheRepsotiroy.Test.MS\GenericCacheRepsotiroy.Test.MS.csproj", "{091093D1-4647-6264-D13A-EB16E3291A76}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C1479CBD-4F0C-49A5-82B8-2CFE516BF9E8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C1479CBD-4F0C-49A5-82B8-2CFE516BF9E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C1479CBD-4F0C-49A5-82B8-2CFE516BF9E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C1479CBD-4F0C-49A5-82B8-2CFE516BF9E8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{091093D1-4647-6264-D13A-EB16E3291A76}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{091093D1-4647-6264-D13A-EB16E3291A76}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{091093D1-4647-6264-D13A-EB16E3291A76}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{091093D1-4647-6264-D13A-EB16E3291A76}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {198E87A3-6350-4EB5-923B-65751017D01D}
+	EndGlobalSection
+EndGlobal
