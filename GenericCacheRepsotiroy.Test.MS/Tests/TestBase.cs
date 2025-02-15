@@ -1,7 +1,9 @@
-﻿using GenericCacheRepository.Interfaces;
+﻿using Bogus;
+using GenericCacheRepository.Interfaces;
 using GenericCacheRepository.Repository;
 using GenericCacheRepository.Services;
 using GenericCacheRepository.Test.MS.Context;
+using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using SqliteDbContext.Context;
 using System;
@@ -18,6 +20,7 @@ namespace GenericCacheRepository.Test.MS.Tests
         protected Mock<ICacheService> _cacheServiceMock;
         protected Mock<ICompositeCacheService> _compositeCacheServiceMock;
         protected CacheRepository _repository;
+        private IServiceCollection _services;
 
         [TestInitialize]
         public void Setup()
@@ -25,8 +28,18 @@ namespace GenericCacheRepository.Test.MS.Tests
             _dbContextMock = new SqliteDbContext<TestDbContext>();
             _cacheServiceMock = new Mock<ICacheService>();
             _compositeCacheServiceMock = new Mock<ICompositeCacheService>();
-            _repository = new CacheRepository(_cacheServiceMock.Object, _compositeCacheServiceMock.Object, _dbContextMock.Context);
+            var loggserService = new Mock<ILoggerService>();
+
+            _services = new ServiceCollection();
+            _services.AddDbContext<TestDbContext>();
+            var serviceScopeFactory = _services.BuildServiceProvider().GetService<IServiceScopeFactory>();
+            _repository = new CacheRepository(loggserService.Object, _cacheServiceMock.Object, _compositeCacheServiceMock.Object, serviceScopeFactory, _dbContextMock.Context);
+            SetupMock();
             RegisterTypes();
+        }
+
+        private void SetupMock()
+        {
         }
 
         private static HashSet<Type> _registeredTypes = new HashSet<Type>();

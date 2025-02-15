@@ -31,6 +31,20 @@ namespace GenericCacheRepository.Services
         {
             _cache.Remove(key);
         }
+
+        public async Task SetAsync<T>(string key, T value, TimeSpan expiration, bool sliding = true)
+        {
+            var options = new MemoryCacheEntryOptions()
+                .SetAbsoluteExpiration(expiration);
+
+            if (sliding)
+            {
+                options.SetSlidingExpiration(TimeSpan.FromMinutes(5));
+            }
+
+            _cache.Set(key, value, options);
+        }
+
     }
 
 }
