@@ -4,6 +4,8 @@ using GenericCacheRepository.Repository;
 using GenericCacheRepository.Services;
 using GenericCacheRepository.Tests.NUnit.Context;
 using GenericCacheRepository.Tests.NUnit.Domain;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -40,7 +42,7 @@ namespace GenericCacheRepository.Tests.NUnit.Tests
             _compositeCacheService = new CompositeCacheService(_cache);
             _dbContextProviderMock = new Mock<IDbContextProvider>();
             var loggerService = new Mock<ILoggerService>();
-            _dbContextProviderMock.Setup(x => x.GetDbContext()).Returns(_dbContext.Context);
+            _dbContextProviderMock.Setup(x => x.GetDbContext()).Returns(() => _dbContext.CreateDbContext());
 
             _repository = new CacheRepository<User>(_cacheService, _compositeCacheService, _dbContextProviderMock.Object, loggerService.Object);
             SetupMock();
@@ -51,6 +53,7 @@ namespace GenericCacheRepository.Tests.NUnit.Tests
         public void TearDown()
         {
             _cache.Dispose();
+            _dbContext.CloseConnection();
         }
 
 

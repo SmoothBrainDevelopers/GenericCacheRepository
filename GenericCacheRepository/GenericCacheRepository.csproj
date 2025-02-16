@@ -12,6 +12,9 @@
     <PackageTags>Repository;Cache;Generic;GenericRepsoitory;CacheRepository</PackageTags>
     <PackageLicenseFile>MIT License.txt</PackageLicenseFile>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
+	<VersionPrefix>1.0.0.0</VersionPrefix>
+	<OutputPath>bin/Package</OutputPath>
+	<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
