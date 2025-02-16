@@ -4,7 +4,26 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <Title>GenericCacheRepository</Title>
+    <Description>This is a decoupled, strong-type generic caching repository that supports caching CRUD operations and Pagination.</Description>
+    <PackageProjectUrl>https://github.com/SmoothBrainDevelopers/GenericCacheRepository.git</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/SmoothBrainDevelopers/GenericCacheRepository.git</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>Repository;Cache;Generic;GenericRepsoitory;CacheRepository</PackageTags>
+    <PackageLicenseFile>MIT License.txt</PackageLicenseFile>
+    <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\MIT License.txt">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.13" />
