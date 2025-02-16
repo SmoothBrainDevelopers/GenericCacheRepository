@@ -5,8 +5,6 @@ VisualStudioVersion = 17.13.35806.99
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GenericCacheRepository", "GenericCacheRepository\GenericCacheRepository.csproj", "{C1479CBD-4F0C-49A5-82B8-2CFE516BF9E8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SqliteDbContext", "..\SqliteDbContextLib\src\SqliteDbContextLib\SqliteDbContext.csproj", "{FDDD7EFC-7CAC-330F-F6EA-3A9A72565B19}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GenericCacheRepository.Tests.NUnit", "GenericCacheRepository.Tests.NUnit\GenericCacheRepository.Tests.NUnit.csproj", "{85133019-5F15-19C1-1E35-6858EDB69225}"
 EndProject
 Global
@@ -19,10 +17,6 @@ Global
 		{C1479CBD-4F0C-49A5-82B8-2CFE516BF9E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C1479CBD-4F0C-49A5-82B8-2CFE516BF9E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C1479CBD-4F0C-49A5-82B8-2CFE516BF9E8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{FDDD7EFC-7CAC-330F-F6EA-3A9A72565B19}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{FDDD7EFC-7CAC-330F-F6EA-3A9A72565B19}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{FDDD7EFC-7CAC-330F-F6EA-3A9A72565B19}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{FDDD7EFC-7CAC-330F-F6EA-3A9A72565B19}.Release|Any CPU.Build.0 = Release|Any CPU
 		{85133019-5F15-19C1-1E35-6858EDB69225}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{85133019-5F15-19C1-1E35-6858EDB69225}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{85133019-5F15-19C1-1E35-6858EDB69225}.Release|Any CPU.ActiveCfg = Release|Any CPU
