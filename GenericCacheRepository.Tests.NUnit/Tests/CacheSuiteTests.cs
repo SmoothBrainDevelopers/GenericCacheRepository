@@ -1,6 +1,7 @@
 ﻿using GenericCacheRepository.Helpers;
 using GenericCacheRepository.Interfaces;
 using GenericCacheRepository.Tests.NUnit.Context;
+using GenericCacheRepository.Tests.NUnit.Domain;
 using Moq;
 
 namespace GenericCacheRepository.Tests.NUnit.Tests
@@ -9,7 +10,7 @@ namespace GenericCacheRepository.Tests.NUnit.Tests
     {
         private Mock<ICacheService> _cacheServiceMock;
         private Mock<ICompositeCacheService> _compositeCacheServiceMock;
-        private Mock<ICacheRepository<TestDbContext>> _cacheRepositoryMock;
+        private Mock<ICacheRepository<User>> _cacheRepositoryMock;
         private Mock<ILoggerService> _loggerMock;
         private CircuitBreaker _circuitBreaker;
 
@@ -18,7 +19,7 @@ namespace GenericCacheRepository.Tests.NUnit.Tests
         {
             _cacheServiceMock = new Mock<ICacheService>();
             _compositeCacheServiceMock = new Mock<ICompositeCacheService>();
-            _cacheRepositoryMock = new Mock<ICacheRepository<TestDbContext>>();
+            _cacheRepositoryMock = new Mock<ICacheRepository<User>>();
             _loggerMock = new Mock<ILoggerService>();
             _circuitBreaker = new CircuitBreaker();
             _circuitBreaker.SetTimeout(60);
@@ -55,11 +56,11 @@ namespace GenericCacheRepository.Tests.NUnit.Tests
         public async Task CacheRepository_ShouldFetchFromCacheBeforeDB()
         {
             var key = "User:3";
-            var user = new { Id = 3, Name = "Charlie" };
+            var user = new User() { Id = 3, Name = "Charlie" };
             _cacheServiceMock.Setup(c => c.GetAsync<object>(key)).ReturnsAsync(user);
-            _cacheRepositoryMock.Setup(r => r.FetchAsync<object>(3)).ReturnsAsync(user);
+            _cacheRepositoryMock.Setup(r => r.FetchAsync(3)).ReturnsAsync(user);
 
-            var result = await _cacheRepositoryMock.Object.FetchAsync<object>(3);
+            var result = await _cacheRepositoryMock.Object.FetchAsync(3);
 
             Assert.IsNotNull(result);
             Assert.AreEqual("Charlie", ((dynamic)result).Name);

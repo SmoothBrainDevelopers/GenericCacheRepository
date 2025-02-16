@@ -1,4 +1,5 @@
-﻿using GenericCacheRepository.Interfaces;
+﻿using Bogus;
+using GenericCacheRepository.Interfaces;
 using GenericCacheRepository.Repository;
 using GenericCacheRepository.Services;
 using GenericCacheRepository.Tests.NUnit.Context;
@@ -22,8 +23,8 @@ namespace GenericCacheRepository.Tests.NUnit.Tests
         private IMemoryCache _cache;
         protected CacheService _cacheService;
         protected ICompositeCacheService _compositeCacheService;
-        protected CacheRepository<TestDbContext> _repository;
-        private Mock<IServiceScopeFactory> _serviceScopeFactory;
+        protected CacheRepository<User> _repository;
+        private Mock<IDbContextProvider> _dbContextProviderMock;
 
         [OneTimeSetUp]
         public static void OneTimeSetUp()
@@ -37,10 +38,11 @@ namespace GenericCacheRepository.Tests.NUnit.Tests
             _cache = new MemoryCache(new MemoryCacheOptions());
             _cacheService = new CacheService(_cache);
             _compositeCacheService = new CompositeCacheService(_cache);
-            var loggserService = new Mock<ILoggerService>();
+            _dbContextProviderMock = new Mock<IDbContextProvider>();
+            var loggerService = new Mock<ILoggerService>();
+            _dbContextProviderMock.Setup(x => x.GetDbContext()).Returns(_dbContext.Context);
 
-            _repository = new CacheRepository<TestDbContext>(_cacheService, _compositeCacheService, _dbContext.Context, /*_serviceScopeFactory.Object, */loggserService.Object);
-            _repository.IsTest = true;
+            _repository = new CacheRepository<User>(_cacheService, _compositeCacheService, _dbContextProviderMock.Object, loggerService.Object);
             SetupMock();
             RegisterTypes();
         }

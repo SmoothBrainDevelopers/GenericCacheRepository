@@ -20,7 +20,7 @@ namespace GenericCacheRepository.Tests.NUnit.Tests
             var alice = _dbContext.GenerateEntity<User>();
             alice.Name = "Alice";
 
-            var result = await _repository.FetchAsync<User>(alice.Id);
+            var result = await _repository.FetchAsync(alice.Id);
 
             Assert.IsNotNull(result);
             Assert.AreEqual("Alice", result.Name);
@@ -31,7 +31,7 @@ namespace GenericCacheRepository.Tests.NUnit.Tests
         {
             var bob = _dbContext.GenerateEntity<User>();
             bob.Name = "Bob";
-            var result = await _repository.FetchAsync<User>(bob.Id);
+            var result = await _repository.FetchAsync(bob.Id);
 
             Assert.IsNotNull(result);
             Assert.AreEqual("Bob", result.Name);
