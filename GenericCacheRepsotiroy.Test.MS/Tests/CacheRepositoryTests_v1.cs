@@ -18,10 +18,8 @@ namespace GenericCacheRepository.Test.MS.Tests
         [TestMethod]
         public async Task FetchAsync_ReturnsCachedItem_WhenAvailable()
         {
-            var alice = _dbContextMock.GenerateEntity<User>();
+            var alice = _dbContext.GenerateEntity<User>();
             alice.Name = "Alice";
-
-            _cacheServiceMock.Setup(c => c.GetAsync<User>($"User:{alice.Id}")).ReturnsAsync(alice);
 
             var result = await _repository.FetchAsync<User>(alice.Id);
 
@@ -32,7 +30,7 @@ namespace GenericCacheRepository.Test.MS.Tests
         [TestMethod]
         public async Task FetchAsync_FetchesFromDb_WhenNotInCache()
         {
-            var bob = _dbContextMock.GenerateEntity<User>();
+            var bob = _dbContext.GenerateEntity<User>();
             bob.Name = "Bob";
             var result = await _repository.FetchAsync<User>(bob.Id);
 
@@ -43,7 +41,7 @@ namespace GenericCacheRepository.Test.MS.Tests
         [TestMethod]
         public async Task FetchAsync_UsesPaginationCorrectly()
         {
-            var users = _dbContextMock.GenerateEntities<User>(2)
+            var users = _dbContext.GenerateEntities<User>(2)
                 .AsQueryable(); ;
             User alice = users.ElementAt(0);
             alice.Name = "Alice";

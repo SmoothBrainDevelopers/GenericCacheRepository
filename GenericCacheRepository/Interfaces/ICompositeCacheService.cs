@@ -8,8 +8,8 @@ namespace GenericCacheRepository.Interfaces
 {
     public interface ICompositeCacheService
     {
-        public Task<List<object>> GetCachedIdsAsync(string compositeKey);
-        public Task SetCachedIdsAsync(string compositeKey, List<object> ids, TimeSpan expiration);
-        public Task RemoveCompositeKeyAsync(string compositeKey);
+        public List<object> GetCachedIds(string compositeKey);
+        public void SetCachedIds(string compositeKey, List<object> ids, TimeSpan expiration);
+        public void RemoveCompositeKey(string compositeKey);
     }
 }

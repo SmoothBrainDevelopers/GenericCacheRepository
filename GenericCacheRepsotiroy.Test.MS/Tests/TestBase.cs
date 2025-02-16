@@ -4,6 +4,7 @@ using GenericCacheRepository.Repository;
 using GenericCacheRepository.Services;
 using GenericCacheRepository.Test.MS.Context;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using SqliteDbContext.Context;
@@ -17,22 +18,27 @@ namespace GenericCacheRepository.Test.MS.Tests
 {
     public class TestBase
     {
-        protected SqliteDbContext<TestDbContext> _dbContextMock;
-        protected Mock<ICacheService> _cacheServiceMock;
-        protected Mock<ICompositeCacheService> _compositeCacheServiceMock;
+        private static readonly object _lock = new object();
+        private static bool _dbInitialized = false;
+
+        private IMemoryCache _cache;
+        protected SqliteDbContext<TestDbContext> _dbContext;
+        protected CacheService _cacheService;
+        protected ICompositeCacheService _compositeCacheService;
         protected CacheRepository<TestDbContext> _repository;
         private Mock<IServiceScopeFactory> _serviceScopeFactory;
 
         [TestInitialize]
         public void Setup()
         {
-            _cacheServiceMock = new Mock<ICacheService>();
-            _compositeCacheServiceMock = new Mock<ICompositeCacheService>();
+            _cache = new MemoryCache(new MemoryCacheOptions());
+            _cacheService = new CacheService(_cache);
+            _compositeCacheService = new CompositeCacheService(_cache);
             var loggserService = new Mock<ILoggerService>();
 
             SetupDbContext();
             
-            _repository = new CacheRepository<TestDbContext>(_cacheServiceMock.Object, _compositeCacheServiceMock.Object, _serviceScopeFactory.Object, loggserService.Object);
+            _repository = new CacheRepository<TestDbContext>(_cacheService, _compositeCacheService, _serviceScopeFactory.Object, loggserService.Object);
             _repository.IsTest = true;
             SetupMock();
             RegisterTypes();
@@ -40,19 +46,29 @@ namespace GenericCacheRepository.Test.MS.Tests
 
         private void SetupDbContext()
         {
-            _dbContextMock = new SqliteDbContext<TestDbContext>("Test");
-            _dbContextMock.Context.Database.EnsureDeleted();
-            _dbContextMock.Context.Database.EnsureCreated();
-            //var services = new ServiceCollection();
-            //services.AddDbContext<TestDbContext>(options => options.UseInMemoryDatabase("Test:memory:"));
-            //var serviceScopeFactory = services.BuildServiceProvider().GetService<IServiceScopeFactory>();
-            //_serviceScopeFactory = serviceScopeFactory;
-            _serviceScopeFactory = new Mock<IServiceScopeFactory>();
-            var scope = new Mock<IServiceScope>();
-            var serviceProvider = new Mock<IServiceProvider>();
-            _serviceScopeFactory.Setup(s => s.CreateScope()).Returns(() => scope.Object);
-            scope.Setup(s => s.ServiceProvider).Returns(() => serviceProvider.Object);
-            serviceProvider.Setup(s => s.GetService(typeof(TestDbContext))).Returns(() => _dbContextMock.Context);
+            lock (_lock)
+            {
+                if (!_dbInitialized)
+                {
+                    _dbContext = new SqliteDbContext<TestDbContext>("Test");
+                    _dbContext.Context.Database.EnsureDeleted();
+                    _dbContext.Context.Database.EnsureCreated();
+                    _dbInitialized = true;
+
+                    // Ensure each test gets a new scoped DbContext
+                    _serviceScopeFactory = new Mock<IServiceScopeFactory>();
+                    var scope = new Mock<IServiceScope>();
+                    var serviceProvider = new Mock<IServiceProvider>();
+
+                    _serviceScopeFactory.Setup(s => s.CreateScope()).Returns(() => scope.Object);
+                    scope.Setup(s => s.ServiceProvider).Returns(() => serviceProvider.Object);
+                    serviceProvider.Setup(s => s.GetService(typeof(TestDbContext))).Returns(_dbContext.Context);
+                }
+                else
+                {
+                    _dbContext = new SqliteDbContext<TestDbContext>("Test");
+                }
+            }
         }
 
         private void SetupMock()

@@ -83,7 +83,7 @@ namespace GenericCacheRepository.Repository
         public async Task<List<T>> FetchAsync<T>(int page, int pageCount, Query<T> query) where T : class
         {
             string compositeKey = query.GetCacheKey();
-            var cachedIds = await _compositeCacheService.GetCachedIdsAsync(compositeKey);
+            var cachedIds = _compositeCacheService.GetCachedIds(compositeKey);
 
             if (cachedIds.Count > 0)
             {
@@ -133,7 +133,7 @@ namespace GenericCacheRepository.Repository
                 }
 
                 // Cache the composite key mapping
-                await _compositeCacheService.SetCachedIdsAsync(compositeKey, ids, TimeSpan.FromMinutes(10));
+                _compositeCacheService.SetCachedIds(compositeKey, ids, TimeSpan.FromMinutes(10));
             });
             return paginatedResults ?? new List<T>();
         }

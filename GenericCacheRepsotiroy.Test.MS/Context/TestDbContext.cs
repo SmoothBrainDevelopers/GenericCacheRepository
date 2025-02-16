@@ -20,18 +20,6 @@ namespace GenericCacheRepository.Test.MS.Context
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            try
-            {
-                ConfigureModel(modelBuilder);
-            }
-            catch (Exception)
-            {
-
-            }
-        }
-
-        private void ConfigureModel(ModelBuilder modelBuilder)
-        {
             modelBuilder.Entity<User>(entity =>
             {
                 entity.HasKey(e => e.Id);

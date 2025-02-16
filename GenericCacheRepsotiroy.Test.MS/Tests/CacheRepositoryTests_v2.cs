@@ -6,10 +6,8 @@
         [TestMethod]
         public async Task FetchAsync_ReturnsCachedItem_WhenAvailable()
         {
-            var user = _dbContextMock.GenerateEntity<User>();
+            var user = _dbContext.GenerateEntity<User>();
             user.Name = "Alice";
-            _cacheServiceMock.Setup(c => c.GetAsync<User>("User:1")).ReturnsAsync(user);
-
             var result = await _repository.FetchAsync<User>(1);
 
             Assert.IsNotNull(result);
@@ -19,7 +17,7 @@
         [TestMethod]
         public async Task FetchAsync_UsesPaginationCorrectly()
         {
-            var users = _dbContextMock.GenerateEntities<User>(2);
+            var users = _dbContext.GenerateEntities<User>(2);
             users[0].UserName = "Alice";
             users[1].UserName = "Bob";
 
