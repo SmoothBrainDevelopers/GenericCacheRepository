@@ -12,7 +12,7 @@ using GenericCacheRepository.Tests.NUnit.Context;
 
 namespace GenericCacheRepository.Tests.NUnit.Tests
 {
-    public class CacheRepositoryTests_v1 : TestBase
+    public class CacheRepositoryTests : TestBase
     {
         [Test]
         public async Task FetchAsync_ReturnsCachedItem_WhenAvailable()

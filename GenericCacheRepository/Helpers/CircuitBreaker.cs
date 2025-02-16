@@ -9,14 +9,20 @@ namespace GenericCacheRepository.Helpers
     public class CircuitBreaker
     {
         private int _failureCount = 0;
-        private readonly int _failureThreshold = 3;
+        private int _failureThreshold = 3;
         private DateTime _lastFailureTime;
+        private int _timeout = 60;
+
+        public void SetTimeout(int timeoutSeconds)
+        {
+            _timeout = timeoutSeconds;
+        }
 
         public bool AllowRequest()
         {
             if (_failureCount >= _failureThreshold)
             {
-                if (DateTime.UtcNow - _lastFailureTime > TimeSpan.FromMinutes(1))
+                if (DateTime.UtcNow - _lastFailureTime > TimeSpan.FromSeconds(_timeout))
                 {
                     _failureCount = 0;
                     return true;
