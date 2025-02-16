@@ -1,9 +1,10 @@
 ﻿using GenericCacheRepository.Helpers;
+using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 
 namespace GenericCacheRepository.Interfaces
 {
-    public interface ICacheRepository
+    public interface ICacheRepository<T> where T : DbContext, new()
     {
         Task<T?> FetchAsync<T>(object key) where T : class;
         Task<List<T>> FetchAsync<T>(List<object> keys) where T : class;
@@ -13,5 +14,4 @@ namespace GenericCacheRepository.Interfaces
         Task DeleteAsync<T>(object key) where T : class;
         Task DeleteBulkAsync<T>(List<object> keys) where T : class;
     }
-
 }

@@ -14,7 +14,8 @@ namespace GenericCacheRepository.Services
 
         public async Task<List<object>> GetCachedIdsAsync(string compositeKey)
         {
-            return _cache.TryGetValue(compositeKey, out List<object> cachedIds) ? cachedIds : new List<object>();
+            _cache.TryGetValue(compositeKey, out List<object> cachedIds);
+            return cachedIds ?? new List<object>();
         }
 
         public async Task SetCachedIdsAsync(string compositeKey, List<object> ids, TimeSpan expiration)

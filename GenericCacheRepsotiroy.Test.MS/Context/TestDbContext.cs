@@ -1,4 +1,8 @@
-﻿namespace GenericCacheRepository.Test.MS.Context
+﻿using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+
+namespace GenericCacheRepository.Test.MS.Context
 {
     public class TestDbContext : DbContext
     {
@@ -9,7 +13,24 @@
         }
         public virtual DbSet<User> Users { get; set; }
 
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+        }
+
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            try
+            {
+                ConfigureModel(modelBuilder);
+            }
+            catch (Exception)
+            {
+
+            }
+        }
+
+        private void ConfigureModel(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<User>(entity =>
             {

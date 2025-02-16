@@ -3,29 +3,81 @@ using GenericCacheRepository.Interfaces;
 using GenericCacheRepository.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using System.Linq.Expressions;
 
 namespace GenericCacheRepository.Repository
 {
-    public class CacheRepository : ICacheRepository
+    public class CacheRepository<T> : ICacheRepository<T> where T : DbContext, new()
     {
-        private readonly ILoggerService _logger;
         private readonly ICacheService _cacheService;
         private readonly ICompositeCacheService _compositeCacheService;
         private readonly IServiceScopeFactory _serviceScopeFactory;
-        private readonly DbContext _dbContext;
+        private readonly ILoggerService _logger;
+        public bool IsTest { get; set; }
 
-        public CacheRepository(ILoggerService logger, ICacheService cacheService, ICompositeCacheService compositeCacheService, IServiceScopeFactory serviceScopeFactory, DbContext dbContext)
+        public CacheRepository(ICacheService cacheService, ICompositeCacheService compositeCacheService, IServiceScopeFactory serviceScopeFactory, ILoggerService logger)
         {
-            _logger = logger;
             _cacheService = cacheService;
             _compositeCacheService = compositeCacheService;
-            _dbContext = dbContext;
+            _serviceScopeFactory = serviceScopeFactory;
+            _logger = logger;
         }
 
-        private DbContext CreateDbContext()
+        private async Task UsingDbContextAsync(Func<T, Task> task)
         {
-            using var scope = _serviceScopeFactory.CreateScope();
-            return scope.ServiceProvider.GetRequiredService<DbContext>();
+            using (var scope = _serviceScopeFactory.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<T>();
+                await task(dbContext);
+            }
+        }
+
+        public async Task<T?> FetchAsync<T>(object key) where T : class
+        {
+            var results = await FetchAsync<T>(new List<object> { key });
+            return results.FirstOrDefault();
+        }
+
+        public async Task<List<T>> FetchAsync<T>(List<object> keys) where T : class
+        {
+            var cachedResults = new List<T>();
+            var missingKeys = new List<object>();
+
+            foreach (var key in keys)
+            {
+                var cachedItem = await _cacheService.GetAsync<T>($"{typeof(T).Name}:{key}");
+                if (cachedItem != null)
+                {
+                    cachedResults.Add(cachedItem);
+                }
+                else
+                {
+                    missingKeys.Add(key);
+                }
+            }
+
+            if (!missingKeys.Any()) return cachedResults;
+
+            await UsingDbContextAsync(async dbContext =>
+            {
+                var dbSet = dbContext.Set<T>();
+
+                var lambda = KeyResolver.GetFetchByKeysLambda<T>(missingKeys);
+
+                // Execute query
+                var retrievedEntities = await dbSet.Where(lambda).ToListAsync();
+
+                foreach (var entity in retrievedEntities)
+                {
+                    var entityKey = KeyResolver.GetPrimaryKey(entity);
+                    if (entityKey != null)
+                    {
+                        await _cacheService.SetAsync($"{typeof(T).Name}:{entityKey}", entity, TimeSpan.FromMinutes(10));
+                        cachedResults.Add(entity);
+                    }
+                }
+            });
+            return cachedResults ?? new List<T>();
         }
 
         public async Task<List<T>> FetchAsync<T>(int page, int pageCount, Query<T> query) where T : class
@@ -35,96 +87,122 @@ namespace GenericCacheRepository.Repository
 
             if (cachedIds.Count > 0)
             {
-                var results = await FetchAsync<T>(cachedIds);
-                return results;
-            }
-
-            using var dbContext = CreateDbContext();
-            var dbSet = dbContext.Set<T>().AsQueryable();
-            var filteredQuery = query.Apply(dbSet);
-            var result = await filteredQuery.Skip((page - 1) * pageCount).Take(pageCount).ToListAsync();
-
-            var ids = result.Select(x => (object)x.GetType().GetProperty("Id")?.GetValue(x)).Where(id => id != null).ToList();
-            await _compositeCacheService.SetCachedIdsAsync(compositeKey, ids, TimeSpan.FromMinutes(10));
-
-            return result;
-        }
-
-        public async Task<List<T>> FetchAsync<T>(List<object> keys) where T : class
-        {
-            string cacheKey = $"{typeof(T).Name}:{string.Join(":", keys)}";
-            var cachedItems = new List<T>();
-
-            foreach (var key in keys)
-            {
-                var cachedItem = await _cacheService.GetAsync<T>($"{typeof(T).Name}:{key}");
-                if (cachedItem != null)
+                var cacheResults = await FetchAsync<T>(cachedIds);
+                if(cacheResults != null && cacheResults.Any())
                 {
-                    cachedItems.Add(cachedItem);
+                    return cacheResults;
                 }
             }
 
-            if (cachedItems.Count == keys.Count) return cachedItems;
-
-            using var dbContext = CreateDbContext();
-            var dbSet = dbContext.Set<T>();
-            var missingKeys = keys.Except(cachedItems.Select(x => x.GetType().GetProperty("Id")?.GetValue(x)));
-
-            var retrievedEntities = await dbSet.Where(e => e.GetType().GetProperty("Id") == null ? false : missingKeys.Contains(e.GetType().GetProperty("Id")!.GetValue(e))).ToListAsync();
-
-            foreach (var entity in retrievedEntities)
+            List<T> paginatedResults = null;
+            await UsingDbContextAsync(async dbContext =>
             {
-                var entityKey = entity.GetType().GetProperty("Id")?.GetValue(entity);
+                var dbSet = dbContext.Set<T>().AsQueryable();
+
+                // Apply query filters
+                var filteredQuery = query.Apply(dbSet);
+
+                // Paginate
+                paginatedResults = await filteredQuery
+                    .Skip((page - 1) * pageCount)
+                    .Take(pageCount)
+                    .ToListAsync();
+
+                // Get the primary key property
+                var keyProperty = KeyResolver.GetKeyProperty<T>();
+                if (keyProperty == null)
+                {
+                    throw new InvalidOperationException($"No key property found for type {typeof(T).Name}");
+                }
+
+                // Convert paginated results into a strongly-typed key list
+                var keyType = keyProperty.PropertyType;
+                var typedListType = typeof(List<>).MakeGenericType(keyType);
+                var typedKeysList = Activator.CreateInstance(typedListType);
+                var addMethod = typedListType.GetMethod("Add");
+
+                var ids = new List<object>();
+                foreach (var entity in paginatedResults)
+                {
+                    var entityKey = keyProperty.GetValue(entity);
+                    if (entityKey != null)
+                    {
+                        ids.Add(entityKey);
+                        addMethod.Invoke(typedKeysList, new object[] { Convert.ChangeType(entityKey, keyType) });
+                    }
+                }
+
+                // Cache the composite key mapping
+                await _compositeCacheService.SetCachedIdsAsync(compositeKey, ids, TimeSpan.FromMinutes(10));
+            });
+            return paginatedResults ?? new List<T>();
+        }
+
+
+        public async Task SaveAsync<T>(T entity) where T : class
+        {
+            await UsingDbContextAsync(async dbContext =>
+            {
+                dbContext.Set<T>().Update(entity);
+                await dbContext.SaveChangesAsync();
+
+                var entityKey = KeyResolver.GetPrimaryKey(entity);
                 if (entityKey != null)
                     await _cacheService.SetAsync($"{typeof(T).Name}:{entityKey}", entity, TimeSpan.FromMinutes(10));
-            }
-
-            cachedItems.AddRange(retrievedEntities);
-            return cachedItems;
+            });
         }
 
-        public async Task RefreshCompositeCacheAsync<T>(string compositeKey, List<object> ids)
+
+        public async Task SaveBulkAsync<T>(List<T> entities) where T : class
         {
-            var accessCount = (await _cacheService.GetAsync<int>(compositeKey + "_accessCount")) + 1;
-            TimeSpan expiration = accessCount > 5 ? TimeSpan.FromMinutes(30) : TimeSpan.FromMinutes(10);
-            await _compositeCacheService.SetCachedIdsAsync(compositeKey, ids, expiration);
+            await UsingDbContextAsync(async dbContext =>
+            {
+                dbContext.Set<T>().UpdateRange(entities);
+                await dbContext.SaveChangesAsync();
+
+                foreach (var entity in entities)
+                {
+                    var entityKey = entity.GetType().GetProperty("Id")?.GetValue(entity);
+                    if (entityKey != null)
+                        await _cacheService.SetAsync($"{typeof(T).Name}:{entityKey}", entity, TimeSpan.FromMinutes(10));
+                }
+            });
         }
 
-        public async Task<List<T>> FetchMultipleAsync<T>(List<object> keys) where T : class
+        public async Task DeleteAsync<T>(object key) where T : class
         {
-            var fetchTasks = keys.Select(key => FetchAsync<T>(key)).ToList();
-            var results = await Task.WhenAll(fetchTasks);
-            return results.Where(r => r != null).ToList();
+            await UsingDbContextAsync(async dbContext =>
+            {
+                var dbSet = dbContext.Set<T>();
+
+                var entity = await dbSet.FindAsync(key);
+                if (entity != null)
+                {
+                    dbSet.Remove(entity);
+                    await dbContext.SaveChangesAsync();
+                    await _cacheService.RemoveAsync($"{typeof(T).Name}:{key}");
+                }
+            });
         }
 
-        public Task DeleteAsync<T>(params object[] keys) where T : class
+        public async Task DeleteBulkAsync<T>(List<object> keys) where T : class
         {
-            throw new NotImplementedException();
-        }
+            await UsingDbContextAsync(async dbContext =>
+            {
+                var dbSet = dbContext.Set<T>();
 
-        public Task DeleteAsync<T>(object key) where T : class
-        {
-            throw new NotImplementedException();
-        }
+                var entities = await dbSet.Where(e => keys.Contains(e.GetType().GetProperty("Id") == null ? false : e.GetType().GetProperty("Id")!.GetValue(e))).ToListAsync();
+                if (entities.Any())
+                {
+                    dbSet.RemoveRange(entities);
+                    await dbContext.SaveChangesAsync();
 
-        public Task DeleteBulkAsync<T>(List<object> keys) where T : class
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<T?> FetchAsync<T>(object key) where T : class
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task SaveAsync<T>(T entity) where T : class
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task SaveBulkAsync<T>(List<T> entities) where T : class
-        {
-            throw new NotImplementedException();
+                    foreach (var key in keys)
+                    {
+                        await _cacheService.RemoveAsync($"{typeof(T).Name}:{key}");
+                    }
+                }
+            });
         }
     }
 }
