@@ -28,12 +28,11 @@ namespace GenericCacheRepository.Repository
             _logger = logger;
         }
 
-        private DbContext GetDbContext() => _dbContextProvider.GetDbContext();
-
 
         public async Task<T?> FetchAsync(object key)
         {
-            var result = await FetchAsync(new List<object> { key });
+            var tempKey = new List<object> { key };
+            var result = await FetchAsync(tempKey);
             return result.FirstOrDefault();
         }
 
@@ -57,46 +56,48 @@ namespace GenericCacheRepository.Repository
 
             if (!missingKeys.Any()) return cachedResults;
 
-            using var dbContext = GetDbContext();
-            var dbSet = dbContext.Set<T>();
-
-            var keyProperty = KeyResolver.GetKeyProperty<T>();
-            if (keyProperty == null)
-                throw new InvalidOperationException($"No key property found for type {typeof(T).Name}");
-
-            var keyType = keyProperty.PropertyType;
-            var typedListType = typeof(List<>).MakeGenericType(keyType);
-            var typedKeysList = Activator.CreateInstance(typedListType);
-            var addMethod = typedListType.GetMethod("Add");
-
-            foreach (var key in missingKeys)
+            using (var dbContext = _dbContextProvider.GetDbContext())
             {
-                var convertedKey = Convert.ChangeType(key, keyType);
-                addMethod.Invoke(typedKeysList, new object[] { convertedKey });
-            }
+                var dbSet = dbContext.Set<T>();
 
-            var parameter = Expression.Parameter(typeof(T), "e");
-            var propertyAccess = Expression.Call(
-                typeof(EF),
-                nameof(EF.Property),
-                new[] { keyType },
-                parameter,
-                Expression.Constant(keyProperty.Name)
-            );
+                var keyProperty = KeyResolver.GetKeyProperty<T>();
+                if (keyProperty == null)
+                    throw new InvalidOperationException($"No key property found for type {typeof(T).Name}");
 
-            var containsMethod = typedListType.GetMethod("Contains", new[] { keyType });
-            var containsExpression = Expression.Call(Expression.Constant(typedKeysList), containsMethod, propertyAccess);
-            var lambda = Expression.Lambda<Func<T, bool>>(containsExpression, parameter);
+                var keyType = keyProperty.PropertyType;
+                var typedListType = typeof(List<>).MakeGenericType(keyType);
+                var typedKeysList = Activator.CreateInstance(typedListType);
+                var addMethod = typedListType.GetMethod("Add");
 
-            var retrievedEntities = await dbSet.Where(lambda).ToListAsync();
-
-            foreach (var entity in retrievedEntities)
-            {
-                var entityKey = KeyResolver.GetPrimaryKey(entity);
-                if (entityKey != null)
+                foreach (var key in missingKeys)
                 {
-                    await _cacheService.SetAsync($"{typeof(T).Name}:{entityKey}", entity, TimeSpan.FromMinutes(10));
-                    cachedResults.Add(entity);
+                    var convertedKey = Convert.ChangeType(key, keyType);
+                    addMethod.Invoke(typedKeysList, new object[] { convertedKey });
+                }
+
+                var parameter = Expression.Parameter(typeof(T), "e");
+                var propertyAccess = Expression.Call(
+                    typeof(EF),
+                    nameof(EF.Property),
+                    new[] { keyType },
+                    parameter,
+                    Expression.Constant(keyProperty.Name)
+                );
+
+                var containsMethod = typedListType.GetMethod("Contains", new[] { keyType });
+                var containsExpression = Expression.Call(Expression.Constant(typedKeysList), containsMethod, propertyAccess);
+                var lambda = Expression.Lambda<Func<T, bool>>(containsExpression, parameter);
+
+                var retrievedEntities = await dbSet.Where(lambda).ToListAsync();
+
+                foreach (var entity in retrievedEntities)
+                {
+                    var entityKey = KeyResolver.GetPrimaryKey(entity);
+                    if (entityKey != null)
+                    {
+                        await _cacheService.SetAsync($"{typeof(T).Name}:{entityKey}", entity, TimeSpan.FromMinutes(10));
+                        cachedResults.Add(entity);
+                    }
                 }
             }
 
@@ -113,83 +114,93 @@ namespace GenericCacheRepository.Repository
                 return await FetchAsync(cachedIds);
             }
 
-            using var dbContext = GetDbContext();
-            var dbSet = dbContext.Set<T>().AsQueryable();
-            var filteredQuery = query.Apply(dbSet);
+            List<T> paginatedResults = null;
+            using (var dbContext = _dbContextProvider.GetDbContext())
+            {
+                var dbSet = dbContext.Set<T>().AsQueryable();
+                var filteredQuery = query.Apply(dbSet);
 
-            var paginatedResults = await filteredQuery
-                .Skip((page - 1) * pageCount)
-                .Take(pageCount)
-                .ToListAsync();
+                paginatedResults = await filteredQuery
+                    .Skip((page - 1) * pageCount)
+                    .Take(pageCount)
+                    .ToListAsync();
 
-            var keyProperty = KeyResolver.GetKeyProperty<T>();
-            if (keyProperty == null)
-                throw new InvalidOperationException($"No key property found for type {typeof(T).Name}");
+                var keyProperty = KeyResolver.GetKeyProperty<T>();
+                if (keyProperty == null)
+                    throw new InvalidOperationException($"No key property found for type {typeof(T).Name}");
 
-            var ids = paginatedResults
-                .Select(entity => keyProperty.GetValue(entity))
-                .Where(id => id != null)
-                .ToList();
+                var ids = paginatedResults
+                    .Select(entity => keyProperty.GetValue(entity))
+                    .Where(id => id != null)
+                    .ToList();
 
-            _compositeCacheService.SetCachedIds(compositeKey, ids, TimeSpan.FromMinutes(10));
+                _compositeCacheService.SetCachedIds(compositeKey, ids, TimeSpan.FromMinutes(10));
+            }
 
-            return paginatedResults;
+            return paginatedResults ?? new List<T>();
         }
 
         public async Task SaveAsync(T entity)
         {
-            using var dbContext = GetDbContext();
-            dbContext.Set<T>().Update(entity);
-            await dbContext.SaveChangesAsync();
-
-            var entityKey = KeyResolver.GetPrimaryKey(entity);
-            if (entityKey != null)
-                await _cacheService.SetAsync($"{typeof(T).Name}:{entityKey}", entity, TimeSpan.FromMinutes(10));
-        }
-
-        public async Task SaveBulkAsync(List<T> entities)
-        {
-            using var dbContext = GetDbContext();
-            dbContext.Set<T>().UpdateRange(entities);
-            await dbContext.SaveChangesAsync();
-
-            foreach (var entity in entities)
+            using (var dbContext = _dbContextProvider.GetDbContext())
             {
+                dbContext.Set<T>().Update(entity);
+                await dbContext.SaveChangesAsync();
+
                 var entityKey = KeyResolver.GetPrimaryKey(entity);
                 if (entityKey != null)
                     await _cacheService.SetAsync($"{typeof(T).Name}:{entityKey}", entity, TimeSpan.FromMinutes(10));
             }
         }
 
+        public async Task SaveBulkAsync(List<T> entities)
+        {
+            using (var dbContext = _dbContextProvider.GetDbContext())
+            {
+                dbContext.Set<T>().UpdateRange(entities);
+                await dbContext.SaveChangesAsync();
+
+                foreach (var entity in entities)
+                {
+                    var entityKey = KeyResolver.GetPrimaryKey(entity);
+                    if (entityKey != null)
+                        await _cacheService.SetAsync($"{typeof(T).Name}:{entityKey}", entity, TimeSpan.FromMinutes(10));
+                }
+            }
+        }
+
         public async Task DeleteAsync(object key)
         {
-            using var dbContext = GetDbContext();
-            var dbSet = dbContext.Set<T>();
-
-            var entity = await dbSet.FindAsync(key);
-            if (entity != null)
+            using (var dbContext = _dbContextProvider.GetDbContext())
             {
-                dbSet.Remove(entity);
-                await dbContext.SaveChangesAsync();
-                await _cacheService.RemoveAsync($"{typeof(T).Name}:{key}");
+                var dbSet = dbContext.Set<T>();
+                var entity = await dbSet.FindAsync(key);
+                if (entity != null)
+                {
+                    dbSet.Remove(entity);
+                    await dbContext.SaveChangesAsync();
+                    await _cacheService.RemoveAsync($"{typeof(T).Name}:{key}");
+                }
             }
         }
 
         public async Task DeleteBulkAsync(List<object> keys)
         {
-            using var dbContext = GetDbContext();
-            var dbSet = dbContext.Set<T>();
-
-            var entities = await FetchAsync(keys);
-            if (entities.Any())
+            using (var dbContext = _dbContextProvider.GetDbContext())
             {
-                dbSet.RemoveRange(entities);
-                await dbContext.SaveChangesAsync();
-
-                foreach (var key in keys)
+                var dbSet = dbContext.Set<T>();
+                var entities = await FetchAsync(keys);
+                if (entities.Any())
                 {
-                    await _cacheService.RemoveAsync($"{typeof(T).Name}:{key}");
+                    dbSet.RemoveRange(entities);
+                    await dbContext.SaveChangesAsync();
+
+                    foreach (var key in keys)
+                    {
+                        await _cacheService.RemoveAsync($"{typeof(T).Name}:{key}");
+                    }
                 }
+
             }
         }
     }
