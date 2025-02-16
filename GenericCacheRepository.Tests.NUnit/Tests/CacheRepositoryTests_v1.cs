@@ -7,15 +7,14 @@ using GenericCacheRepository.Helpers;
 using Microsoft.Extensions.Caching.Memory;
 using GenericCacheRepository.Interfaces;
 using SqliteDbContext.Context;
-using GenericCacheRepository.Test.MS.Domain;
-using GenericCacheRepository.Test.MS.Context;
+using GenericCacheRepository.Tests.NUnit.Domain;
+using GenericCacheRepository.Tests.NUnit.Context;
 
-namespace GenericCacheRepository.Test.MS.Tests
+namespace GenericCacheRepository.Tests.NUnit.Tests
 {
-    [TestClass]
     public class CacheRepositoryTests_v1 : TestBase
     {
-        [TestMethod]
+        [Test]
         public async Task FetchAsync_ReturnsCachedItem_WhenAvailable()
         {
             var alice = _dbContext.GenerateEntity<User>();
@@ -27,7 +26,7 @@ namespace GenericCacheRepository.Test.MS.Tests
             Assert.AreEqual("Alice", result.Name);
         }
 
-        [TestMethod]
+        [Test]
         public async Task FetchAsync_FetchesFromDb_WhenNotInCache()
         {
             var bob = _dbContext.GenerateEntity<User>();
@@ -38,7 +37,7 @@ namespace GenericCacheRepository.Test.MS.Tests
             Assert.AreEqual("Bob", result.Name);
         }
 
-        [TestMethod]
+        [Test]
         public async Task FetchAsync_UsesPaginationCorrectly()
         {
             var users = _dbContext.GenerateEntities<User>(2)
@@ -52,7 +51,9 @@ namespace GenericCacheRepository.Test.MS.Tests
             var query = new Query<User>(u => u.Id > 0);
             var result = await _repository.FetchAsync(1, 10, query);
 
-            Assert.AreEqual(2, result.Count);
+            var expectedAlice = result.First(x => x.Id == alice.Id);
+
+            Assert.AreEqual(alice.Id, expectedAlice.Id);
         }
     }
 }

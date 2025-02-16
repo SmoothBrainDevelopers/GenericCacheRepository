@@ -1,11 +1,11 @@
-﻿using Bogus;
-using GenericCacheRepository.Interfaces;
+﻿using GenericCacheRepository.Interfaces;
 using GenericCacheRepository.Repository;
 using GenericCacheRepository.Services;
-using GenericCacheRepository.Test.MS.Context;
-using Microsoft.Data.Sqlite;
+using GenericCacheRepository.Tests.NUnit.Context;
+using GenericCacheRepository.Tests.NUnit.Domain;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using SqliteDbContext.Context;
 using System;
@@ -14,21 +14,24 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GenericCacheRepository.Test.MS.Tests
+namespace GenericCacheRepository.Tests.NUnit.Tests
 {
     public class TestBase
     {
-        private static readonly object _lock = new object();
-        private static bool _dbInitialized = false;
-
+        protected static SqliteDbContext<TestDbContext> _dbContext;
         private IMemoryCache _cache;
-        protected SqliteDbContext<TestDbContext> _dbContext;
         protected CacheService _cacheService;
         protected ICompositeCacheService _compositeCacheService;
         protected CacheRepository<TestDbContext> _repository;
         private Mock<IServiceScopeFactory> _serviceScopeFactory;
 
-        [TestInitialize]
+        [OneTimeSetUp]
+        public static void OneTimeSetUp()
+        {
+            SetupDbContext();
+        }
+
+        [SetUp]
         public void Setup()
         {
             _cache = new MemoryCache(new MemoryCacheOptions());
@@ -36,39 +39,24 @@ namespace GenericCacheRepository.Test.MS.Tests
             _compositeCacheService = new CompositeCacheService(_cache);
             var loggserService = new Mock<ILoggerService>();
 
-            SetupDbContext();
-            
-            _repository = new CacheRepository<TestDbContext>(_cacheService, _compositeCacheService, _serviceScopeFactory.Object, loggserService.Object);
+            _repository = new CacheRepository<TestDbContext>(_cacheService, _compositeCacheService, _dbContext.Context, /*_serviceScopeFactory.Object, */loggserService.Object);
             _repository.IsTest = true;
             SetupMock();
             RegisterTypes();
         }
 
-        private void SetupDbContext()
+        [TearDown]
+        public void TearDown()
         {
-            lock (_lock)
-            {
-                if (!_dbInitialized)
-                {
-                    _dbContext = new SqliteDbContext<TestDbContext>("Test");
-                    _dbContext.Context.Database.EnsureDeleted();
-                    _dbContext.Context.Database.EnsureCreated();
-                    _dbInitialized = true;
+            _cache.Dispose();
+        }
 
-                    // Ensure each test gets a new scoped DbContext
-                    _serviceScopeFactory = new Mock<IServiceScopeFactory>();
-                    var scope = new Mock<IServiceScope>();
-                    var serviceProvider = new Mock<IServiceProvider>();
 
-                    _serviceScopeFactory.Setup(s => s.CreateScope()).Returns(() => scope.Object);
-                    scope.Setup(s => s.ServiceProvider).Returns(() => serviceProvider.Object);
-                    serviceProvider.Setup(s => s.GetService(typeof(TestDbContext))).Returns(_dbContext.Context);
-                }
-                else
-                {
-                    _dbContext = new SqliteDbContext<TestDbContext>("Test");
-                }
-            }
+        private static void SetupDbContext()
+        {
+            _dbContext = new SqliteDbContext<TestDbContext>("Test");
+            _dbContext.Context.Database.EnsureDeleted();
+            _dbContext.Context.Database.EnsureCreated();
         }
 
         private void SetupMock()
@@ -85,7 +73,7 @@ namespace GenericCacheRepository.Test.MS.Tests
                     user.Id = (int)seeder.IncrementKeys<User>().First();
                 });
             });
-            
+
         }
 
         private static void RegisterType<T>(Action action)

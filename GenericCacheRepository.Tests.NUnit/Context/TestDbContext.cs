@@ -1,8 +1,9 @@
-﻿using Microsoft.Data.Sqlite;
+﻿using GenericCacheRepository.Tests.NUnit.Domain;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
-namespace GenericCacheRepository.Test.MS.Context
+namespace GenericCacheRepository.Tests.NUnit.Context
 {
     public class TestDbContext : DbContext
     {

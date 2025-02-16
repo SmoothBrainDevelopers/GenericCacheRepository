@@ -1,6 +1,7 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 
-namespace GenericCacheRepository.Test.MS.Domain
+namespace GenericCacheRepository.Tests.NUnit.Domain
 {
     [PrimaryKey(nameof(Id))]
     public class User

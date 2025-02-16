@@ -11,30 +11,34 @@ namespace GenericCacheRepository.Repository
     {
         private readonly ICacheService _cacheService;
         private readonly ICompositeCacheService _compositeCacheService;
-        private readonly IServiceScopeFactory _serviceScopeFactory;
+        //private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILoggerService _logger;
         public bool IsTest { get; set; }
+        private readonly T _dbContext;
 
-        public CacheRepository(ICacheService cacheService, ICompositeCacheService compositeCacheService, IServiceScopeFactory serviceScopeFactory, ILoggerService logger)
+        public CacheRepository(ICacheService cacheService, ICompositeCacheService compositeCacheService, T dbContext, ILoggerService logger)
         {
             _cacheService = cacheService;
             _compositeCacheService = compositeCacheService;
-            _serviceScopeFactory = serviceScopeFactory;
+            //_serviceScopeFactory = serviceScopeFactory;
             _logger = logger;
+            _dbContext = dbContext;
         }
 
         private async Task UsingDbContextAsync(Func<T, Task> task)
         {
-            using (var scope = _serviceScopeFactory.CreateScope())
-            {
-                var dbContext = scope.ServiceProvider.GetRequiredService<T>();
-                await task(dbContext);
-            }
+            await task(_dbContext);
+            //using (var scope = _serviceScopeFactory.CreateScope())
+            //{
+            //    var dbContext = scope.ServiceProvider.GetRequiredService<T>();
+            //    await task(dbContext);
+            //}
         }
 
         public async Task<T?> FetchAsync<T>(object key) where T : class
         {
-            var results = await FetchAsync<T>(new List<object> { key });
+            var tempKey = new List<object> { key };
+            var results = await FetchAsync<T>(tempKey);
             return results.FirstOrDefault();
         }
 
