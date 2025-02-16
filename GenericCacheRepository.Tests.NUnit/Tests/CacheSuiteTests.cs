@@ -1,8 +1,7 @@
 ﻿using GenericCacheRepository.Helpers;
 using GenericCacheRepository.Interfaces;
-using GenericCacheRepository.Tests.NUnit.Context;
-using GenericCacheRepository.Tests.NUnit.Domain;
 using Moq;
+using SqlDbContextLib.DataLayer.Domain;
 
 namespace GenericCacheRepository.Tests.NUnit.Tests
 {

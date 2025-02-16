@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GenericCacheRepository", "G
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GenericCacheRepository.Tests.NUnit", "GenericCacheRepository.Tests.NUnit\GenericCacheRepository.Tests.NUnit.csproj", "{85133019-5F15-19C1-1E35-6858EDB69225}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SqliteDbContext.DataLayer", "..\SqliteDbContextLib\src\SqliteDbContext.DataLayer\SqliteDbContext.DataLayer.csproj", "{A709A6BB-A033-FA26-560E-7FECB283285A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{85133019-5F15-19C1-1E35-6858EDB69225}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{85133019-5F15-19C1-1E35-6858EDB69225}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{85133019-5F15-19C1-1E35-6858EDB69225}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A709A6BB-A033-FA26-560E-7FECB283285A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A709A6BB-A033-FA26-560E-7FECB283285A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A709A6BB-A033-FA26-560E-7FECB283285A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A709A6BB-A033-FA26-560E-7FECB283285A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

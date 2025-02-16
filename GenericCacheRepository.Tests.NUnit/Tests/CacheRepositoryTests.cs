@@ -7,8 +7,7 @@ using GenericCacheRepository.Helpers;
 using Microsoft.Extensions.Caching.Memory;
 using GenericCacheRepository.Interfaces;
 using SqliteDbContext.Context;
-using GenericCacheRepository.Tests.NUnit.Domain;
-using GenericCacheRepository.Tests.NUnit.Context;
+using SqlDbContextLib.DataLayer.Domain;
 
 namespace GenericCacheRepository.Tests.NUnit.Tests
 {

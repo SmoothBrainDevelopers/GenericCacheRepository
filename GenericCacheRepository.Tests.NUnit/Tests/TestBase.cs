@@ -2,14 +2,14 @@
 using GenericCacheRepository.Interfaces;
 using GenericCacheRepository.Repository;
 using GenericCacheRepository.Services;
-using GenericCacheRepository.Tests.NUnit.Context;
-using GenericCacheRepository.Tests.NUnit.Domain;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
+using SqlDbContextLib.DataLayer.Context;
+using SqlDbContextLib.DataLayer.Domain;
 using SqliteDbContext.Context;
 using System;
 using System.Collections.Generic;
