@@ -89,18 +89,17 @@ namespace GenericCacheRepository.Tests.NUnit.Tests
         [Test]
         public async Task FetchAsync_UsesPaginationCorrectly()
         {
-            var users = _dbContext.GenerateEntities<User>(2) //generated in DB
+            var users = _dbContext.GenerateEntities<User>(20) //generated in DB
                 .AsQueryable(); ;
-            User alice = users.ElementAt(0);
+            User alice = users.OrderBy(x => x.Name).ElementAt(0);
             alice.Name = "Alice";
 
-            var query = new Query<User>(u => u.Id > 0); //changes not saved
-            var result = await _userCacheRepository.FetchListAsync(1, 10, query);
-            var expectedAlice = result.First(x => x.Id == alice.Id);
-            Assert.AreNotEqual(alice.Name, expectedAlice.Name);
+            var result = await _userCacheRepository.FetchPageAsync(1, 10, nameof(User.Name));
+            var expectedAlice = result.FirstOrDefault(x => x.Id == alice.Id);
+            Assert.AreNotEqual(alice.Name, expectedAlice?.Name);
 
             await _userCacheRepository.SaveAsync(alice); //save changes and update cache
-            result = await _userCacheRepository.FetchListAsync(1, 10, query);
+            result = await _userCacheRepository.FetchPageAsync(1, 10, nameof(User.Name));
             expectedAlice = result.First(x => x.Id == alice.Id);
             Assert.AreEqual(alice.Name, expectedAlice.Name);
         }

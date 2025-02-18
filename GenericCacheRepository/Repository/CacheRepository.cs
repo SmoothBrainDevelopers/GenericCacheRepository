@@ -1,5 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using GenericCacheRepository.Interfaces;
+using GenericCacheRepository.Helpers;
+using GenericCacheRepository.Services;
+using System.Linq.Expressions;
+using System.Reflection;
 
 namespace GenericCacheRepository.Repository
 {
@@ -52,6 +56,36 @@ namespace GenericCacheRepository.Repository
             }
 
             return await query.ToListAsync();
+        }
+
+        public async Task<List<T>> FetchPageAsync(int page, int pageCount, string sortByPropertyName = null, bool asc = true)
+        {
+            using var dbContext = _dbContextProvider.GetDbContext();
+            var dbSet = dbContext.Set<T>();
+            var query = dbSet.AsQueryable();
+
+            if (!string.IsNullOrEmpty(sortByPropertyName))
+            {
+                var property = typeof(T).GetProperty(sortByPropertyName, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
+                if (property != null)
+                {
+                    var param = Expression.Parameter(typeof(T), "x");
+                    var propertyAccess = Expression.Property(param, property);
+                    var orderByExp = Expression.Lambda(propertyAccess, param);
+
+                    string methodName = asc ? "OrderBy" : "OrderByDescending";
+                    var orderByCall = Expression.Call(
+                        typeof(Queryable),
+                        methodName,
+                        new Type[] { typeof(T), property.PropertyType },
+                        query.Expression,
+                        Expression.Quote(orderByExp));
+
+                    query = query.Provider.CreateQuery<T>(orderByCall);
+                }
+            }
+
+            return await query.Skip((page - 1) * pageCount).Take(pageCount).ToListAsync();
         }
 
         public async Task SaveAsync(T entity)

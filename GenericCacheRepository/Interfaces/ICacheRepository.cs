@@ -8,6 +8,7 @@ namespace GenericCacheRepository.Interfaces
     {
         Task<T?> FetchAsync(params object[] keys);
         Task<List<T>> FetchListAsync(params object[] keys);
+        Task<List<T>> FetchPageAsync(int page, int pageCount, string sortByPropertyName = null, bool asc = true);
         Task SaveAsync(T entity);
         Task SaveBulkAsync(List<T> entities);
         Task DeleteAsync(params object[] keys);
