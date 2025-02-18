@@ -32,7 +32,7 @@ namespace GenericCacheRepository.Tests.NUnit.Tests
                 entity2 = ctx.Set<User>().Find(user.Id);
             }
 
-            entity3 = await _repository.FetchAsync(user.Id);
+            entity3 = await _userCacheRepository.FetchAsync(user.Id);
 
             Assert.IsNotNull(entity1);
             Assert.IsNotNull(entity2);
@@ -49,24 +49,27 @@ namespace GenericCacheRepository.Tests.NUnit.Tests
         public async Task FetchAsync_ReturnsCachedItem_WhenAvailable()
         {
             var ctx = _dbContext.Context;
-            var alice = _dbContext.GenerateEntity<User>();
-            var fetchAfterGeneration = await _repository.FetchAsync(alice.Id); //user is cached
+            var generatedAlice = _dbContext.GenerateEntity<User>(user => { user.Name = "Alice"; }); //generated in DB
+            var fetchedAlice = await _userCacheRepository.FetchAsync(generatedAlice.Id); //user is cached
 
-            Assert.IsNotNull(fetchAfterGeneration);
-            Assert.AreEqual(alice.Name, fetchAfterGeneration.Name);
+            Assert.IsNotNull(fetchedAlice);
+            Assert.AreEqual(generatedAlice.Name, fetchedAlice.Name);
+
+            var bypassAlice = ctx.Users.First(x => x.Id == generatedAlice.Id); //bypass cache to get tracked object
+            bypassAlice.Name = "Bob";
+            var bob = bypassAlice;
+            ctx.SaveChanges(); //changes are saved to DB, but not cache
+            fetchedAlice = await _userCacheRepository.FetchAsync(generatedAlice.Id); //user is cached, but object is tracked
+            Assert.AreNotEqual(bypassAlice.Name, fetchedAlice.Name);
+            Assert.AreEqual(bypassAlice.Name, bob.Name);
+
+            fetchedAlice.Name = "Alice";
+            await _userCacheRepository.SaveAsync(fetchedAlice); //update instance of tracked object and cached user
+            var fetchedAliceAfterUpdate = await _userCacheRepository.FetchAsync(fetchedAlice.Id);
             
-            var instance = ctx.Users.FirstOrDefault(x => x.Id == alice.Id); //bypass cache to get tracked object
-            alice.Name = "Alice";
-            Assert.AreEqual(alice.Name, instance.Name);
-
-            fetchAfterGeneration = await _repository.FetchAsync(alice.Id); //user is cached, but object is tracked
-            Assert.AreNotEqual(alice.Name, fetchAfterGeneration.Name);
-
-            await _repository.SaveAsync(alice); //update instance of tracked object and cached user
-            var fetchedAfterUpdate = await _repository.FetchAsync(alice.Id);
-            
-            Assert.IsNotNull(fetchedAfterUpdate);
-            Assert.AreEqual(alice.Name, fetchedAfterUpdate.Name);
+            bypassAlice = ctx.Users.First(x => x.Id == generatedAlice.Id); //bypass cache to get tracked object
+            Assert.IsNotNull(fetchedAliceAfterUpdate);
+            Assert.AreNotEqual(bypassAlice.Name, fetchedAliceAfterUpdate.Name);
         }
 
         [Test]
@@ -77,7 +80,7 @@ namespace GenericCacheRepository.Tests.NUnit.Tests
             bob.Name = "Bob";
             ctx.SaveChanges();
 
-            var result = await _repository.FetchAsync(bob.Id);
+            var result = await _userCacheRepository.FetchAsync(bob.Id);
 
             Assert.IsNotNull(result);
             Assert.AreEqual(bob.Name, result.Name);
@@ -86,20 +89,20 @@ namespace GenericCacheRepository.Tests.NUnit.Tests
         [Test]
         public async Task FetchAsync_UsesPaginationCorrectly()
         {
-            var users = _dbContext.GenerateEntities<User>(2)
+            var users = _dbContext.GenerateEntities<User>(2) //generated in DB
                 .AsQueryable(); ;
             User alice = users.ElementAt(0);
             alice.Name = "Alice";
 
-            User bob = users.ElementAt(1);
-            bob.Name = "Bob";
-
-            var query = new Query<User>(u => u.Id > 0);
-            var result = await _repository.FetchAsync(1, 10, query);
-
+            var query = new Query<User>(u => u.Id > 0); //changes not saved
+            var result = await _userCacheRepository.FetchListAsync(1, 10, query);
             var expectedAlice = result.First(x => x.Id == alice.Id);
+            Assert.AreNotEqual(alice.Name, expectedAlice.Name);
 
-            Assert.AreEqual(alice.Id, expectedAlice.Id);
+            await _userCacheRepository.SaveAsync(alice); //save changes and update cache
+            result = await _userCacheRepository.FetchListAsync(1, 10, query);
+            expectedAlice = result.First(x => x.Id == alice.Id);
+            Assert.AreEqual(alice.Name, expectedAlice.Name);
         }
     }
 }

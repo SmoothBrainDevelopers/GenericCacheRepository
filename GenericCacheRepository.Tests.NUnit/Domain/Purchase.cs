@@ -10,14 +10,20 @@ namespace GenericCacheRepository.Tests.NUnit.Domain
 {
     public class Purchase
     {
-        [Key]
-        public int PurchaseId { get; set; }
+        [Key, Required]
         public int CustomerId { get; set; }
+
+        [Key, Required]
         public int StoreId { get; set; }
+
+        [Key, Required]
         public int ProductId { get; set; }
+
+        [Key, Required]
+        public DateTime PurchaseDate { get; set; }
+
         public int Quantity { get; set; }
         public bool UsedBOGODiscount { get; set; }
-        public DateTime PurchaseDate { get; set; }
 
         [ForeignKey("CustomerId")]
         public virtual Customer Customer { get; set; }
@@ -28,4 +34,5 @@ namespace GenericCacheRepository.Tests.NUnit.Domain
         [ForeignKey("ProductId")]
         public virtual Product Product { get; set; }
     }
+
 }

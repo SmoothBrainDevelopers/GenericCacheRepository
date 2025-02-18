@@ -49,17 +49,11 @@ namespace GenericCacheRepository.Tests.NUnit.Context
             modelBuilder.Entity<Store>(entity =>
             {
                 entity.HasKey(e => e.StoreId);
+                entity.Property(e => e.Name).IsRequired();
 
                 entity.HasOne(e => e.Region)
                       .WithMany(r => r.Stores)
-                      .HasForeignKey(e => e.RegionId)
-                      .OnDelete(DeleteBehavior.Cascade);
-
-                entity.HasMany(e => e.Sales)
-                      .WithOne()
-                      .HasForeignKey(e => e.StoreId)
-                      .OnDelete(DeleteBehavior.Cascade);
-                entity.Property(e => e.Name).IsRequired();
+                      .HasForeignKey(e => e.RegionId);
             });
 
             modelBuilder.Entity<Sale>(entity =>
@@ -87,7 +81,7 @@ namespace GenericCacheRepository.Tests.NUnit.Context
 
             modelBuilder.Entity<Purchase>(entity =>
             {
-                entity.HasKey(e => e.PurchaseId);
+                entity.HasKey(e => new { e.CustomerId, e.StoreId, e.ProductId, e.PurchaseDate });
 
                 entity.HasOne(e => e.Customer)
                       .WithMany(c => c.Purchases)
@@ -95,31 +89,21 @@ namespace GenericCacheRepository.Tests.NUnit.Context
                       .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasOne(e => e.Store)
-                      .WithOne()
-                      .HasForeignKey<Purchase>(e => e.StoreId)
+                      .WithMany(s => s.Purchases)
+                      .HasForeignKey(e => e.StoreId)
                       .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasOne(e => e.Product)
-                      .WithOne()
-                      .HasForeignKey<Purchase>(e => e.ProductId)
+                      .WithMany()
+                      .HasForeignKey(e => e.ProductId)
                       .OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<Customer>(entity =>
             {
                 entity.HasKey(e => e.CustomerId);
-
-                entity.HasMany(e => e.Purchases)
-                      .WithOne()
-                      .HasForeignKey(e => e.CustomerId)
-                      .OnDelete(DeleteBehavior.Cascade);
-
                 entity.Property(e => e.Name).IsRequired();
             });
-
-            
-
-            
         }
     }
 }
